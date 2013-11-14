@@ -69,7 +69,7 @@ public class SPARTA extends TeamRobot{
 	public void onScannedRobot(ScannedRobotEvent e) {
 		 
 		
-		 
+		 //i love trains
 		
 		
 		 fieldWidth = getBattleFieldWidth();
