@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.*;
 import java.awt.*;
 
-
+// This is Sam's change. It is very nice.
 
 public class SPARTA extends TeamRobot{
 	 
