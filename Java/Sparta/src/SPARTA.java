@@ -14,6 +14,9 @@ import java.awt.*;
 
 public class SPARTA extends TeamRobot{
 	 
+	//i love trains
+	
+	
 // vars.
 	 
 	 public int moveDirection = 1;
