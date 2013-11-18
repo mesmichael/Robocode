@@ -1,6 +1,3 @@
-
-
-
 import robocode.*;
 import robocode.Robot.*;
 import robocode.TeamRobot.*;
@@ -10,14 +7,9 @@ import java.util.ArrayList;
 import java.util.*;
 import java.awt.*;
 
-// This is Sam's change. It is very nice.
 
-public class SPARTA extends TeamRobot{
-	 
-	//i love trains
+public class sparta extends TeamRobot{
 	
-	
-// vars.
 	 
 	 public int moveDirection = 1;
 	 public double targetX = 0;
