@@ -64,51 +64,51 @@ public class sparta extends TeamRobot{
 	public void onScannedRobot(ScannedRobotEvent e) {
 		 
 		
-		 //i love trains
+		 
+		if (isTeammate(e.getName()) == true) {
 		
+			 fieldWidth = getBattleFieldWidth();
+			 fieldHeight = getBattleFieldHeight();
+			 Ebearing = e.getBearing();
+			 myX = getX();
+			 myY = getY();
+			 double bPower = 1;
+			 targetHeading = e.getHeading();
+			 targetVelocity = e.getVelocity();
+			 distance = e.getDistance();
+			 bulletPower = bPower;
+			 double bullet = 20-3*bulletPower;
+			 double angel;
+			 double speedangel;
+			 
+			 angel= (bullet * distance); 
+			 speedangel = targetVelocity * bullet;
+			 
+			 //turns so that alwas sidewase if enemy
+			 
+			 setTurnRight(e.getBearing() + 90);
+			 
+			 //calculates the power of the robots shot
+			 if(distance > 350)
+			 {
+				 bPower = 0.5; 
+			 }
+			 if(distance > 300)
+			 {
+				 bPower = 1; 
+			 }
+			 if(distance > 250)
+			 {
+				 bPower = 2; 
+			 }
+			 else
+			 {
+				 bPower = 3; 
+			 }
 		
-		 fieldWidth = getBattleFieldWidth();
-		 fieldHeight = getBattleFieldHeight();
-		 Ebearing = e.getBearing();
-		 myX = getX();
-		 myY = getY();
-		 double bPower = 1;
-		 targetHeading = e.getHeading();
-		 targetVelocity = e.getVelocity();
-		 distance = e.getDistance();
-		 bulletPower = bPower;
-		 double bullet = 20-3*bulletPower;
-		 double angel;
-		 double speedangel;
-		 
-		 angel= (bullet * distance); 
-		 speedangel = targetVelocity * bullet;
-		 
-		 //turns so that alwas sidewase if enemy
-		 
-		 setTurnRight(e.getBearing() + 90);
-		 
-		 //calculates the power of the robots shot
-		 if(distance > 350)
-		 {
-			 bPower = 0.5; 
-		 }
-		 if(distance > 300)
-		 {
-			 bPower = 1; 
-		 }
-		 if(distance > 250)
-		 {
-			 bPower = 2; 
-		 }
-		 else
-		 {
-			 bPower = 3; 
-		 }
-		
 		 
 		 
-		 
+		}
 		 
 		 
 		 // creates a lock on a robot
