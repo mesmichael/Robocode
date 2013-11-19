@@ -65,7 +65,7 @@ public class sparta extends TeamRobot{
 		 
 		
 		 
-		if (isTeammate(e.getName()) == true) {
+		if (isTeammate(e.getName()) == false) {
 		
 			 fieldWidth = getBattleFieldWidth();
 			 fieldHeight = getBattleFieldHeight();
@@ -108,7 +108,7 @@ public class sparta extends TeamRobot{
 		
 		 
 		 
-		}
+		
 		 
 		 
 		 // creates a lock on a robot
@@ -126,6 +126,7 @@ public class sparta extends TeamRobot{
 		buletpower = bPower;
 		targetEnergy = e.getEnergy();
 		
+		}
 	}
 	
 	
