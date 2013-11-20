@@ -69,9 +69,9 @@ public class sparta extends TeamRobot{
 	    Point = new Point2D.Double(target.x, target.y);
 	    //when i is less than 10 do
 	    for (int i = 0; i < 10; i++){
-	        nextTime = (intMath.round((getRange(getX(),getY(),Point.x,Point.y)/(20-(3*firePower))));
-	        theTime = getTime() + secondTime;
-	        Point = target.guessPosition(time);
+	        secondTime = (intMath.round((getRange(getX(),getY(),Point.x,Point.y)/(20-(3*firePower))));
+	        TheTime = getTime() + secondTime;
+	        Point = target.guessPosition(TheTime);
 	    }
 	   //calculates gun difrence
 	    double gunOffset = getGunHeadingRadians() - 
