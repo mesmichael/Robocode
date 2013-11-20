@@ -62,19 +62,20 @@ public class sparta extends TeamRobot{
 	
 	
 	void doGun() {
-	    long time;
-	    long nextTime;
-	    Point2D.Double p;
-	    p = new Point2D.Double(target.x, target.y);
+	    long TheTime;
+	    long secondTime;
+	    Point2D.Double Point;
+	    // creates a point so we can find the time differance
+	    Point = new Point2D.Double(target.x, target.y);
+	    //when i is less than 10 do
 	    for (int i = 0; i < 10; i++){
-	        nextTime = 
-	    (intMath.round((getRange(getX(),getY(),p.x,p.y)/(20-(3*firePower))));
-	        time = getTime() + nextTime;
-	        p = target.guessPosition(time);
+	        nextTime = (intMath.round((getRange(getX(),getY(),Point.x,Point.y)/(20-(3*firePower))));
+	        theTime = getTime() + secondTime;
+	        Point = target.guessPosition(time);
 	    }
-	   
+	   //calculates gun difrence
 	    double gunOffset = getGunHeadingRadians() - 
-	                  (Math.PI/2 - Math.atan2(p.y - getY(), p.x - getX()));
+	                  (Math.PI/2 - Math.atan2(Point.y - getY(), Point.x - getX()));
 	    setTurnGunLeftRadians(normaliseBearing(gunOffset));
 	}
 
@@ -95,36 +96,31 @@ public class sparta extends TeamRobot{
 	
 	
 	public void onScannedRobot(ScannedRobotEvent e) {
-		doGun();
-	}
-	/**public void onScannedRobot(ScannedRobotEvent e) {
+		 fieldWidth = getBattleFieldWidth();
+		 fieldHeight = getBattleFieldHeight();
+		 Ebearing = e.getBearing();
+		 myX = getX();
+		 myY = getY();
+		 double bPower = 1;
+		 targetHeading = e.getHeading();
+		 targetVelocity = e.getVelocity();
+		 distance = e.getDistance();
+		 bulletPower = bPower;
+		 double bullet = 20-3*bulletPower;
+		 double angel;
+		 double speedangel;
+		
+		 angel= (bullet * distance); 
+		 speedangel = targetVelocity * bullet;
 		 
 		
-		 
+		
+		
 		if (isTeammate(e.getName()) == false) {
-		
-			 fieldWidth = getBattleFieldWidth();
-			 fieldHeight = getBattleFieldHeight();
-			 Ebearing = e.getBearing();
-			 myX = getX();
-			 myY = getY();
-			 double bPower = 1;
-			 targetHeading = e.getHeading();
-			 targetVelocity = e.getVelocity();
-			 distance = e.getDistance();
-			 bulletPower = bPower;
-			 double bullet = 20-3*bulletPower;
-			 double angel;
-			 double speedangel;
-			 
-			 angel= (bullet * distance); 
-			 speedangel = targetVelocity * bullet;
-			 
-			 //turns so that alwas sidewase if enemy
-			 
-			 setTurnRight(e.getBearing() + 90);
-			 
-			 //calculates the power of the robots shot
+		doGun();
+		 //turns so that alwas sidewase if enemy
+		setTurnRight(e.getBearing() + 90);
+			//calculates the power of the robots shot
 			 if(distance > 350)
 			 {
 				 bPower = 0.5; 
@@ -141,11 +137,18 @@ public class sparta extends TeamRobot{
 			 {
 				 bPower = 3; 
 			 }
+			
+			 fireBullet(bPower);
+				buletpower = bPower;
+				targetEnergy = e.getEnergy();
+		}
+	}
+	/**public void onScannedRobot(ScannedRobotEvent e) {
+		 
 		
 		 
-		 
-		
-		 
+	
+			
 		 
 		 // creates a lock on a robot
 		 double radarTurn = getHeadingRadians() + e.getBearingRadians() - getRadarHeadingRadians();
@@ -157,11 +160,7 @@ public class sparta extends TeamRobot{
 		 double linearBearing = headOnBearing + Math.asin(e.getVelocity() / Rules.getBulletSpeed(bPower) * Math.sin(e.getHeadingRadians() - headOnBearing));
 		 setTurnGunRightRadians(Utils.normalRelativeAngle(linearBearing - getGunHeadingRadians()));
 		 setFire(bPower);
-		 
-		fireBullet(bPower);
-		buletpower = bPower;
-		targetEnergy = e.getEnergy();
-		
+	
 		}
 	}**/
 	
