@@ -28,6 +28,7 @@ public class sparta extends TeamRobot{
 	 public double myY;
 	 public double Ebearing = 0;
 	 public double buletpower = 0;
+	 public double heading = 0;
 	 
 	public void EnemyWave() {}
 	
@@ -61,27 +62,51 @@ public class sparta extends TeamRobot{
 	}
 	
 	
-	void doGun() {
-	    long TheTime;
-	    long secondTime;
-	    Point2D.Double Point;
-	    // creates a point so we can find the time differance
-	    Point = new Point2D.Double(target.x, target.y);
-	    //when i is less than 10 do
-	    for (int i = 0; i < 10; i++){
-	        secondTime = (intMath.round((getRange(getX(),getY(),Point.x,Point.y)/(20-(3*firePower))));
-	        TheTime = getTime() + secondTime;
-	        Point = target.guessPosition(TheTime);
+	public Point2D.Double guessPosition(long when) {
+	    /**time is when our scan data was produced.  when is the time 
+	    that we think the bullet will reach the target.  diff is the 
+	    difference between the two **/
+	    double diff = when - time;
+	    double newX, newY;
+	    /**if there is a significant change in heading, use circular 
+	    path prediction**/
+	    if (Math.abs(changehead) > 0.00001) {
+	        double radius = targetVelocity/changehead;
+	        double tothead = diff * changehead;
+	        newY = myY + (Math.sin(heading + tothead) * radius) - 
+	                      (Math.sin(heading) * radius);
+	        newX = myX + (Math.cos(heading) * radius) - 
+	                      (Math.cos(heading + tothead) * radius);
 	    }
-	   //calculates gun difrence
+	    /**if the change in heading is insignificant, use linear 
+	    path prediction**/
+	    else {
+	        newY = myY + Math.cos(heading) * targetVelocity * diff;
+	        newX = myX + Math.sin(heading) * targetVelocity * diff;
+	    }
+	    return new Point2D.Double(newX, newY);
+	}
+
+	
+	void doGun() {
+	    long time;
+	    long nextTime;
+	    Point2D.Double p;
+	    p = new Point2D.Double(e.x, e.y);
+	    for (int i = 0; i < 10; i++){
+	        nextTime = (IntMath.round((getrange(getX(),getY(),p.x,p.y)/(20-(3*bulletPower)))));
+	        time = getTime() + nextTime;
+	        p = target.guessPosition(time);
+	    }
+	    /**Turn the gun to the correct angle**/
 	    double gunOffset = getGunHeadingRadians() - 
-	                  (Math.PI/2 - Math.atan2(Point.y - getY(), Point.x - getX()));
+	                  (Math.PI/2 - Math.atan2(p.y - getY(), p.x - getX()));
 	    setTurnGunLeftRadians(normaliseBearing(gunOffset));
 	}
 
 	double normaliseBearing(double ang) {
 	    if (ang > Math.PI)
-	        ang -= 2*PI;
+	        ang -= 2*Math.PI;
 	    if (ang < -Math.PI)
 	        ang += 2*Math.PI;
 	    return ang;
@@ -93,6 +118,9 @@ public class sparta extends TeamRobot{
 	    double h = Math.sqrt( x*x + y*y );
 	    return h;	
 	}
+
+	
+	
 	
 	
 	public void onScannedRobot(ScannedRobotEvent e) {
@@ -109,6 +137,7 @@ public class sparta extends TeamRobot{
 		 double bullet = 20-3*bulletPower;
 		 double angel;
 		 double speedangel;
+		 heading = getHeading();
 		
 		 angel= (bullet * distance); 
 		 speedangel = targetVelocity * bullet;
