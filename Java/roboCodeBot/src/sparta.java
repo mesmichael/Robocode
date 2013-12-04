@@ -1,9 +1,9 @@
 import robocode.*;
+import robocode.Robot;
 import robocode.Robot.*;
 import robocode.TeamRobot.*;
 import robocode.util.Utils;
 import java.awt.geom.*;
-import java.util.ArrayList;
 import java.util.*;
 import java.awt.*;
 
@@ -29,6 +29,9 @@ public class sparta extends TeamRobot{
 	 public double Ebearing = 0;
 	 public double buletpower = 0;
 	 public double heading = 0;
+	 double absoluteBearing = 0;
+	 double enemyY = 0;
+	 double enemyX = 0;
 	 
 	public void EnemyWave() {}
 	
@@ -62,55 +65,7 @@ public class sparta extends TeamRobot{
 	}
 	
 	
-	public Point2D.Double guessPosition(long when) {
-	    /**time is when our scan data was produced.  when is the time 
-	    that we think the bullet will reach the target.  diff is the 
-	    difference between the two **/
-	    double diff = when - time;
-	    double newX, newY;
-	    /**if there is a significant change in heading, use circular 
-	    path prediction**/
-	    if (Math.abs(changehead) > 0.00001) {
-	        double radius = targetVelocity/changehead;
-	        double tothead = diff * changehead;
-	        newY = myY + (Math.sin(heading + tothead) * radius) - 
-	                      (Math.sin(heading) * radius);
-	        newX = myX + (Math.cos(heading) * radius) - 
-	                      (Math.cos(heading + tothead) * radius);
-	    }
-	    /**if the change in heading is insignificant, use linear 
-	    path prediction**/
-	    else {
-	        newY = myY + Math.cos(heading) * targetVelocity * diff;
-	        newX = myX + Math.sin(heading) * targetVelocity * diff;
-	    }
-	    return new Point2D.Double(newX, newY);
-	}
-
 	
-	void doGun() {
-	    long time;
-	    long nextTime;
-	    Point2D.Double p;
-	    p = new Point2D.Double(e.x, e.y);
-	    for (int i = 0; i < 10; i++){
-	        nextTime = (IntMath.round((getrange(getX(),getY(),p.x,p.y)/(20-(3*bulletPower)))));
-	        time = getTime() + nextTime;
-	        p = target.guessPosition(time);
-	    }
-	    /**Turn the gun to the correct angle**/
-	    double gunOffset = getGunHeadingRadians() - 
-	                  (Math.PI/2 - Math.atan2(p.y - getY(), p.x - getX()));
-	    setTurnGunLeftRadians(normaliseBearing(gunOffset));
-	}
-
-	double normaliseBearing(double ang) {
-	    if (ang > Math.PI)
-	        ang -= 2*Math.PI;
-	    if (ang < -Math.PI)
-	        ang += 2*Math.PI;
-	    return ang;
-	}
 
 	public double getrange(double x1,double y1, double x2,double y2) {
 	    double x = x2-x1;
@@ -130,23 +85,25 @@ public class sparta extends TeamRobot{
 		 myX = getX();
 		 myY = getY();
 		 double bPower = 1;
-		 targetHeading = e.getHeading();
+		 targetHeading = e.getHeadingRadians();
+		 double oldTargetHeading = 0;
 		 targetVelocity = e.getVelocity();
 		 distance = e.getDistance();
 		 bulletPower = bPower;
 		 double bullet = 20-3*bulletPower;
-		 double angel;
-		 double speedangel;
+		 double angel = (bullet * distance);
+		 double speedangel = targetVelocity * bullet;
 		 heading = getHeading();
-		
-		 angel= (bullet * distance); 
-		 speedangel = targetVelocity * bullet;
+		 absoluteBearing = getHeadingRadians() + e.getBearingRadians();		 
+		 enemyX = getX() + e.getDistance() * Math.sin(absoluteBearing);
+		 enemyY = getY() + e.getDistance() * Math.cos(absoluteBearing);
+		 double enemyHeadingChange = targetHeading - oldTargetHeading;
+		 oldTargetHeading = targetHeading;
+		 double deltaTime = 0;
+		 double predictedX = enemyX, predictedY = enemyY;
+	
 		 
-		
-		
-		
 		if (isTeammate(e.getName()) == false) {
-		doGun();
 		 //turns so that alwas sidewase if enemy
 		setTurnRight(e.getBearing() + 90);
 			//calculates the power of the robots shot
@@ -167,14 +124,49 @@ public class sparta extends TeamRobot{
 				 bPower = 3; 
 			 }
 			
+			 // creates a lock on a robot
+			 double radarTurn = getHeadingRadians() + e.getBearingRadians() - getRadarHeadingRadians();
+			 setTurnRadarRightRadians(Utils.normalRelativeAngle(radarTurn));
+			 
+			 
+			 //perdicts acording to power lvl
+			 double headOnBearing = getHeadingRadians() + e.getBearingRadians();
+			 double linearBearing = headOnBearing + Math.asin(e.getVelocity() / Rules.getBulletSpeed(bPower) * Math.sin(e.getHeadingRadians() - headOnBearing));
+			 setTurnGunRightRadians(Utils.normalRelativeAngle(linearBearing - getGunHeadingRadians()));
+			 setFire(bPower);
+		
+			 
+			 
+			 //fires bPower
 			 fireBullet(bPower);
+			 // updates bullet power
 				buletpower = bPower;
+			 // updates targets energy
 				targetEnergy = e.getEnergy();
 		}
 	}
 	/**public void onScannedRobot(ScannedRobotEvent e) {
 		 
-		
+		 while((++deltaTime) * (20.0 - 3.0 * bulletPower) < Point2D.Double.distance(myX, myY, predictedX, predictedY))
+			 {
+				 predictedX += Math.sin(targetHeading) * targetVelocity;
+				 predictedY += Math.cos(targetHeading) * targetVelocity;
+				 targetHeading += enemyHeadingChange;
+				 if(predictedX < 18.0 || predictedY < 18.0|| predictedX > fieldWidth - 18.0 || predictedY > fieldHeight - 18.0)
+				 {
+					 
+					 predictedX = Math.min(Math.max(18.0, predictedX), fieldWidth - 18.0);	
+					 predictedY = Math.min(Math.max(18.0, predictedY), fieldHeight - 18.0);
+					 break; 
+					 
+				 }
+				 double theta = Utils.normalAbsoluteAngle(Math.atan2(predictedX - getX(), predictedY - getY()));
+				 setTurnRadarRightRadians(Utils.normalRelativeAngle(
+						    absoluteBearing - getRadarHeadingRadians()));
+						setTurnGunRightRadians(Utils.normalRelativeAngle(
+						    theta - getGunHeadingRadians()));
+						
+			 }
 		 
 	
 			
