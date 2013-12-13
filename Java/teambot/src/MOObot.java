@@ -30,27 +30,31 @@ public class MOObot extends TeamRobot {
 		}
 	 
 		public void onScannedRobot(ScannedRobotEvent e) {
-			double enemyAbsoluteBearing = getHeadingRadians() + e.getBearingRadians();
-			double enemyDistance = e.getDistance();
-			double enemyVelocity = e.getVelocity();
-			if (enemyVelocity != 0) {
-				lDirection = GFTUtils.sign(enemyVelocity * Math.sin(e.getHeadingRadians() - enemyAbsoluteBearing));
+			if (e.getName() == "sparta*" && e.getName() == "MOObot*"){
 			}
-			GFTWave wave = new GFTWave(this);
-			wave.gunLocation = new Point2D.Double(getX(), getY());
-			GFTWave.targetLocation = GFTUtils.project(wave.gunLocation, enemyAbsoluteBearing, enemyDistance);
-			wave.lDirection = lDirection;
-			wave.bulletPower = Bpower;
-			wave.setSegmentations(enemyDistance, enemyVelocity, lastEnemyVelocity);
-			lastEnemyVelocity = enemyVelocity;
-			wave.bearing = enemyAbsoluteBearing;
-			setTurnGunRightRadians(Utils.normalRelativeAngle(enemyAbsoluteBearing - getGunHeadingRadians() + wave.mostVisitedBearingOffset()));
-			setFire(wave.bulletPower);
-			if (getEnergy() >= Bpower) {
-				addCustomEvent(wave);
+			else{
+				double enemyAbsoluteBearing = getHeadingRadians() + e.getBearingRadians();
+				double enemyDistance = e.getDistance();
+				double enemyVelocity = e.getVelocity();
+				if (enemyVelocity != 0) {
+					lDirection = GFTUtils.sign(enemyVelocity * Math.sin(e.getHeadingRadians() - enemyAbsoluteBearing));
+				}
+				GFTWave wave = new GFTWave(this);
+				wave.gunLocation = new Point2D.Double(getX(), getY());
+				GFTWave.targetLocation = GFTUtils.project(wave.gunLocation, enemyAbsoluteBearing, enemyDistance);
+				wave.lDirection = lDirection;
+				wave.bulletPower = Bpower;
+				wave.setSegmentations(enemyDistance, enemyVelocity, lastEnemyVelocity);
+				lastEnemyVelocity = enemyVelocity;
+				wave.bearing = enemyAbsoluteBearing;
+				setTurnGunRightRadians(Utils.normalRelativeAngle(enemyAbsoluteBearing - getGunHeadingRadians() + wave.mostVisitedBearingOffset()));
+				setFire(wave.bulletPower);
+				if (getEnergy() >= Bpower) {
+					addCustomEvent(wave);
+				}
+				movement.onScannedRobot(e);
+				setTurnRadarRightRadians(Utils.normalRelativeAngle(enemyAbsoluteBearing - getRadarHeadingRadians()) * 2);
 			}
-			movement.onScannedRobot(e);
-			setTurnRadarRightRadians(Utils.normalRelativeAngle(enemyAbsoluteBearing - getRadarHeadingRadians()) * 2);
 		}
 	}
 	 
