@@ -7,218 +7,188 @@ import java.awt.geom.*;
 import java.util.*;
 import java.util.List;
 import java.awt.*;
-
-
-public class sparta extends TeamRobot{
-	
+public class sparta extends TeamRobot {
+	private static final double Bpower = 1.9;
 	 
-	 public int moveDirection = 1;
-	 public double targetX = 0;
-	 public double targetY = 0;
-	 public double targetDistance = -1;
-	 public double targetBearing = -200;
-	 public double targetHeading;
-	 public double targetVelocity;
-	 public double targetEnergy;
-	 public double bulletPower;
-	 public double angleThreshold;
-	 public double distance;
-	 public double fieldWidth = 0;
-	 public double fieldHeight = 0;
-	 public double myX; 
-	 public double myY;
-	 public double Ebearing = 0;
-	 public double buletpower = 0;
-	 public double heading = 0;
-	 double absoluteBearing = 0;
-	 double enemyY = 0;
-	 double enemyX = 0;
-	 int[][] stats = new int[13][31];
-	 private double startX, startY, startBearing, power;
-	 private long   fireTime;
-	 private int    direction;
-	 private int[]  returnSegment;
-	 List<sparta> waves = new ArrayList<sparta>();
-	
-	 
-	 public sparta(double x, double y, double absBearing, double power2,
-			int direction2, long time, int[] currentStats) {
-		// TODO Auto-generated constructor stub
+	private static double lDirection;
+	private static double lastEnemyVelocity;
+	private static GFTMovement movement;
+ 
+	public sparta() {
+		movement = new GFTMovement(this);	
 	}
-
+ 
 	public void run() {
-		 //all parts (gun, body, radar) move indepentent from one each other
-		 setAdjustRadarForRobotTurn(true);
-		 setAdjustGunForRobotTurn(true);
-		 setAdjustRadarForGunTurn(true);
-		 /**
-		  * this is the infinite loop for our while event -M.S.
-		  */
-		 turnRadarRightRadians(Double.POSITIVE_INFINITY);
-		
-		 
-		 while(true)
-		 {
-			 scan();
-			 move();
-		
-		 }
-	
-	 }
-	 
-	 public void WaveBullet(double x, double y, double bearing, double power,
-				int direction, long time, int[] segment)
-		{
-			startX         = x;
-			startY         = y;
-			startBearing   = bearing;
-			this.power     = power;
-			this.direction = direction;
-			fireTime       = time;
-			returnSegment  = segment;
+		setColors(Color.BLACK, Color.BLACK, Color.BLACK);
+		lDirection = 1;
+		lastEnemyVelocity = 0;
+		setAdjustRadarForGunTurn(true);
+		setAdjustGunForRobotTurn(true);
+		do {
+			turnRadarRightRadians(Double.POSITIVE_INFINITY); 
+		} while (true);
+	}
+ 
+	public void onScannedRobot(ScannedRobotEvent e) {
+		if (e.getName() == "sparta*" && e.getName() == "MOObot*"){
 		}
-	 	
-	 public double getBulletSpeed()
-		{
-			return 20 - power * 3;
+		else{
+			double enemyAbsoluteBearing = getHeadingRadians() + e.getBearingRadians();
+			double enemyDistance = e.getDistance();
+			double enemyVelocity = e.getVelocity();
+			if (enemyVelocity != 0) {
+				lDirection = GFTUtils.sign(enemyVelocity * Math.sin(e.getHeadingRadians() - enemyAbsoluteBearing));
+			}
+			GFTWave wave = new GFTWave(this);
+			wave.gunLocation = new Point2D.Double(getX(), getY());
+			GFTWave.targetLocation = GFTUtils.project(wave.gunLocation, enemyAbsoluteBearing, enemyDistance);
+			wave.lDirection = lDirection;
+			wave.bulletPower = Bpower;
+			wave.setSegmentations(enemyDistance, enemyVelocity, lastEnemyVelocity);
+			lastEnemyVelocity = enemyVelocity;
+			wave.bearing = enemyAbsoluteBearing;
+			setTurnGunRightRadians(Utils.normalRelativeAngle(enemyAbsoluteBearing - getGunHeadingRadians() + wave.mostVisitedBearingOffset()));
+			setFire(wave.bulletPower);
+			if (getEnergy() >= Bpower) {
+				addCustomEvent(wave);
+			}
+			movement.onScannedRobot(e);
+			setTurnRadarRightRadians(Utils.normalRelativeAngle(enemyAbsoluteBearing - getRadarHeadingRadians()) * 2);
 		}
-	 
-	public double maxEscapeAngle()
-		{
-			return Math.asin(8 / getBulletSpeed());
-		}
-	 
-	public boolean checkHit(double enemyX, double enemyY, long currentTime)
-	{
-		// if the distance from the wave origin to our enemy has passed
-		// the distance the bullet would have traveled...
-		if (Point2D.distance(startX, startY, enemyX, enemyY) <= 
-				(currentTime - fireTime) * getBulletSpeed())
-		{
-			double desiredDirection = Math.atan2(enemyX - startX, enemyY - startY);
-			double angleOffset = Utils.normalRelativeAngle(desiredDirection - startBearing);
-			double guessFactor =
-				Math.max(-1, Math.min(1, angleOffset / maxEscapeAngle())) * direction;
-			int index = (int) Math.round((returnSegment.length - 1) /2 * (guessFactor + 1));
-			returnSegment[index]++;
-			return true;
+	}
+}
+ 
+class GFTWave extends Condition {
+	static Point2D targetLocation;
+ 
+	double bulletPower;
+	Point2D gunLocation;
+	double bearing;
+	double lDirection;
+ 
+	private static final double mostdistance = 1000;
+	private static final int distanceList = 5;
+	private static final int lovList = 5;
+	private static final int bins = 25;
+	private static final int middleBin = (bins - 1) / 2;
+	private static final double maxEscapeAngles = 0.7;
+	private static final double binWidth = maxEscapeAngles / (double)middleBin;
+ 
+	private static int[][][][] statBuffers = new int[distanceList][lovList][lovList][bins];
+ 
+	private int[] buffer;
+	private AdvancedRobot robot;
+	private double distanceTraveled;
+ 
+	GFTWave(AdvancedRobot _robot) {
+		this.robot = _robot;
+	}
+ 
+	public boolean test() {
+		advance();
+		if (hasArrived()) {
+			buffer[currentBin()]++;
+			robot.removeCustomEvent(this);
 		}
 		return false;
 	}
-
-	
-	
-	
-	
-	
-	
-	private void move() {
-		// TODO Auto-generated method stub
-		ahead(Double.POSITIVE_INFINITY * moveDirection);
+ 
+	double mostVisitedBearingOffset() {
+		return (lDirection * binWidth) * (mostVisitedBin() - middleBin);
 	}
-	
-	
-	
-
-	public double getrange(double x1,double y1, double x2,double y2) {
-	    double x = x2-x1;
-	    double y = y2-y1;
-	    double h = Math.sqrt( x*x + y*y );
-	    return h;	
+ 
+	void setSegmentations(double distance, double velocity, double lastVelocity) {
+		int distanceIndex = (int)(distance / (mostdistance / distanceList));
+		int velocityIndex = (int)Math.abs(velocity / 2);
+		int lastVelocityIndex = (int)Math.abs(lastVelocity / 2);
+		buffer = statBuffers[distanceIndex][velocityIndex][lastVelocityIndex];
 	}
-
-	
-	
-	
-	
-	public void onScannedRobot(ScannedRobotEvent e) {
-		 fieldWidth = getBattleFieldWidth();
-		 fieldHeight = getBattleFieldHeight();
-		 Ebearing = e.getBearing();
-		 myX = getX();
-		 myY = getY();
-		 double bPower = 1;
-		 targetHeading = e.getHeadingRadians();
-		 double oldTargetHeading = 0;
-		 targetVelocity = e.getVelocity();
-		 distance = e.getDistance();
-		 bulletPower = bPower;
-		 double angel = (getBulletSpeed() * distance);
-		 double speedangel = targetVelocity * getBulletSpeed();
-		 heading = getHeading();
-		 absoluteBearing = getHeadingRadians() + e.getBearingRadians();		 
-		 enemyX = getX() + e.getDistance() * Math.sin(absoluteBearing);
-		 enemyY = getY() + e.getDistance() * Math.cos(absoluteBearing);
-		 double enemyHeadingChange = targetHeading - oldTargetHeading;
-		 oldTargetHeading = targetHeading;
-		 double absBearing = getHeadingRadians() + e.getBearingRadians();
-		 
-			// find our enemy's location:
-			double ex = getX() + Math.sin(absBearing) * e.getDistance();
-			double ey = getY() + Math.cos(absBearing) * e.getDistance();
-	 
-			// Let's process the waves now:
-			for (int i=0; i < waves.size(); i++)
-			{
-				sparta currentWave = (sparta)waves.get(i);
-				if (currentWave.checkHit(ex, ey, getTime()))
-				{
-					waves.remove(currentWave);
-					i--;
-				}
+ 
+	private void advance() {
+		distanceTraveled += GFTUtils.bulletVelocity(bulletPower);
+	}
+ 
+	private boolean hasArrived() {
+		return distanceTraveled > gunLocation.distance(targetLocation) - 18;
+	}
+ 
+	private int currentBin() {
+		int bin = (int)Math.round(((Utils.normalRelativeAngle(GFTUtils.absoluteBearing(gunLocation, targetLocation) - bearing)) /
+				(lDirection * binWidth)) + middleBin);
+		return GFTUtils.minMax(bin, 0, bins - 1);
+	}
+ 
+	private int mostVisitedBin() {
+		int mostVisited = middleBin;
+		for (int i = 0; i < bins; i++) {
+			if (buffer[i] > buffer[mostVisited]) {
+				mostVisited = i;
 			}
-	 
-		
-			if (e.getVelocity() != 0)
-			{
-				if (Math.sin(e.getHeadingRadians()-absBearing)*e.getVelocity() < 0)
-					direction = -1;
-				else
-					direction = 1;
-			}
-			int[] currentStats = stats; // This seems silly, but I'm using it to
-						    // show something else later
-			sparta newWave = new sparta(getX(), getY(), absBearing, power,
-	                        direction, getTime(), currentStats);
-			int bestindex = 15;	
-			for (int i=0; i<31; i++)
-				if (currentStats[bestindex] < currentStats[i])
-					bestindex = i;
-	 
-			
-			double guessfactor = (double)(bestindex - (stats.length - 1) / 2)
-	                        / ((stats.length - 1) / 2);
-			double angleOffset = direction * guessfactor * newWave.maxEscapeAngle();
-	                double gunAdjust = Utils.normalRelativeAngle(
-	                        absBearing - getGunHeadingRadians() + angleOffset);
-	                setTurnGunRightRadians(gunAdjust);
-	                
-	          
-            
-		
-		
-		
-	}
-	
-	
-	
-
-
-	public void onHitWall(HitWallEvent e)
-	{ 
-		moveDirection = moveDirection * -1;
-	}
-	
-	public void onHitRobot(HitRobotEvent e)
-	{ 
-		moveDirection = moveDirection * -1;
-	}
-	
-	
-	
-
+		}
+		return mostVisited;
+	}	
 }
-	
-	
-	
-	
+ 
+class GFTUtils {
+	static double bulletVelocity(double power) {
+		return 20 - 3 * power;
+	}
+ 
+	static Point2D project(Point2D sourceLocation, double angle, double length) {
+		return new Point2D.Double(sourceLocation.getX() + Math.sin(angle) * length,
+				sourceLocation.getY() + Math.cos(angle) * length);
+	}
+ 
+	static double absoluteBearing(Point2D source, Point2D target) {
+		return Math.atan2(target.getX() - source.getX(), target.getY() - source.getY());
+	}
+ 
+	static int sign(double v) {
+		return v < 0 ? -1 : 1;
+	}
+ 
+	static int minMax(int v, int min, int max) {
+		return Math.max(min, Math.min(max, v));
+	}
+}
+ 
+class GFTMovement {
+	private static final double battlefieldW = 800;
+	private static final double battlefieldH = 600;
+	private static final double wallMarg = 18;
+	private static final double maxT = 125;
+	private static final double revT = 0.421075;
+	private static final double defalt = 1.2;
+	private static final double wallB = 0.699484;
+ 
+	private AdvancedRobot robot;
+	private Rectangle2D fieldRectangle = new Rectangle2D.Double(wallMarg, wallMarg,
+		battlefieldW - wallMarg * 2, battlefieldH - wallMarg * 2);
+	private double enemyFirePower = 3;
+	private double direction = 0.4;
+ 
+	GFTMovement(AdvancedRobot _robot) {
+		this.robot = _robot;
+	}
+ 
+	public void onScannedRobot(ScannedRobotEvent e) {
+		double enemyAbsoluteBearing = robot.getHeadingRadians() + e.getBearingRadians();
+		double enemyDistance = e.getDistance();
+		Point2D robotLocation = new Point2D.Double(robot.getX(), robot.getY());
+		Point2D enemyLocation = GFTUtils.project(robotLocation, enemyAbsoluteBearing, enemyDistance);
+		Point2D robotDestination;
+		double tries = 0;
+		while (!fieldRectangle.contains(robotDestination = GFTUtils.project(enemyLocation, enemyAbsoluteBearing + Math.PI + direction,
+				enemyDistance * (defalt - tries / 100.0))) && tries < maxT) {
+			tries++;
+		}
+		if ((Math.random() < (GFTUtils.bulletVelocity(enemyFirePower) / revT) / enemyDistance ||
+				tries > (enemyDistance / GFTUtils.bulletVelocity(enemyFirePower) / wallB))) {
+			direction = -direction;
+		}
+		// Jamougha's cool way
+		double angle = GFTUtils.absoluteBearing(robotLocation, robotDestination) - robot.getHeadingRadians();
+		robot.setAhead(Math.cos(angle) * 100);
+		robot.setTurnRightRadians(Math.tan(angle));
+	}
+}
